@@ -5,7 +5,7 @@
 
         WORKDIR /springboot-backend
 
-        RUN mvn clean install -DskipTests=true
+        RUN mvn clean install -DskipTests=true -X
      #stage2
         FROM openjdk:8-alpine
 
