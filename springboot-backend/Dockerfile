@@ -1,7 +1,7 @@
 	#stage1
         FROM  maven:3.6-alpine as builder
 
-        COPY . /springboot-backend
+        COPY springboot-backend /springboot-backend
 
         WORKDIR /springboot-backend
 
