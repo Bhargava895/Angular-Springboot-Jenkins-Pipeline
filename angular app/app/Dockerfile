@@ -1,8 +1,3 @@
-# stage 1
-FROM node:12.7-alpine AS build
-WORKDIR /app
-COPY . .
-RUN npm install | npm build --force
-# stage 2
-FROM nginx:alpine3.17-slim
+FROM nginx:latest
 COPY /dist/app /usr/share/nginx/html
+Expose 80
