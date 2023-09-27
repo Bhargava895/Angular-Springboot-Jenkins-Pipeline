@@ -5,7 +5,7 @@ FROM node:12.7-alpine AS build
 WORKDIR /app
 
 # Copy the package.json and package-lock.json files
-COPY package*.json ./
+COPY app/package*.json ./
 
 # Install dependencies
 RUN npm install
