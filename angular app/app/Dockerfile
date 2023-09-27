@@ -2,7 +2,7 @@
 FROM node:12.7-alpine AS build
 WORKDIR /app
 COPY . .
-CMD cd "angular app/app/"
+RUN cd "./app/angular app/app/"
 RUN npm install | npm run build --force
 # stage 2
 FROM nginx:alpine3.17-slim
