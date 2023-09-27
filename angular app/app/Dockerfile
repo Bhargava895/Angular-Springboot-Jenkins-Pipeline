@@ -1,8 +1,9 @@
 # stage 1
 FROM node:12.7-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json .  # Copy package.json and package-lock.json
-RUN npm install                      # Install dependencies
+# Copy package.json and package-lock.json
+COPY package.json package-lock.json . 
+RUN npm install                      
 COPY . .
 RUN npm run build
 
