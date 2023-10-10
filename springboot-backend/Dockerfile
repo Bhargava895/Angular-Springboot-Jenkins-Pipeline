@@ -9,7 +9,7 @@
      #stage2
         FROM openjdk:8-alpine
 
-        COPY --from=builder /springboot-backend/target/app.jar /app.jar
+        COPY --from=builder /springboot-backend/target/app.war /app.war
 
         EXPOSE 8080
 
