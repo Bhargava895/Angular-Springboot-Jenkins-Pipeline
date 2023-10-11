@@ -2,6 +2,7 @@
 FROM node:12.7-alpine AS build
 WORKDIR /app
 COPY . .
+ls -l
 RUN npm install && npm run build
 # stage 2
 FROM nginx:alpine3.17-slim
