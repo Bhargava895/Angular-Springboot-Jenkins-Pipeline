@@ -1,7 +1,7 @@
 # stage 1
 FROM node:12.7-alpine AS build
 WORKDIR /app
-COPY angular app/app .
+COPY angularapp/app .
 RUN ls
 RUN npm install && npm run build
 # stage 2
