@@ -1,0 +1,75 @@
+pipeline {
+    agent any
+    tools{
+        jdk  'jdk17'
+        maven  'maven3'
+        nodejs 'node16'
+    }
+    
+    environment{
+        SCANNER_HOME= tool 'sonar-scanner'
+        def slackResponse = slackSend(channel: "angular", message: "BuildStarted: ${env.JOB_NAME} ${env.BUILD_NUMBER}")
+    }
+    
+    stages{
+        stage ('Checkout Code from GIT') {
+            steps{
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/Srikanthbatt/docker-compose.git']])
+            }
+        }
+ 
+        stage ('angular') {
+            steps {
+                dir('angularapp/app') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                    sh 'npm run start &'
+                }
+            }
+        }
+        
+        stage('Sonarqube') {
+            steps {
+                withSonarQubeEnv('sonar-server'){
+                   sh ''' $SCANNER_HOME/bin/sonar-scanner'''
+               }
+            }
+        }
+        
+        stage('Build & Tag Docker image') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'django_id', toolName: 'docker') {
+                        sh "docker build -t angular-app -f angularapp/app/Dockerfile ."
+                        sh "docker tag  angular-app srikanthbattula/angular-app:latest"
+                    }
+                }
+            }
+        }
+        stage('Trivy image scan') {
+            steps {
+                sh "trivy image srikanthbattula/angular-app:latest"
+                sh "trivy image --format json -o trivy-report.json --scanners vuln srikanthbattula/angular-app:latest"
+            }
+        }
+        
+        stage('Push Docker image') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'django_id') {
+                        sh "docker push srikanthbattula/angular-app:latest"
+                    }
+                }
+            }
+        }
+        stage('Deploy to Tomcat') {
+            steps {
+                sshagent(['ec2-pem-key']) {
+                   sh "scp -r -o StrictHostKeyChecking=no angularapp/app/dist/app ubuntu@50.19.87.84:/opt/tomcat/webapps"
+                   slackSend(channel: "angular", message: "Deployed Success: ${env.JOB_NAME} ${env.BUILD_NUMBER}")
+}
+            }
+        }
+        
+    }
+}
