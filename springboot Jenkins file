@@ -1,0 +1,84 @@
+pipeline {
+    agent any
+    tools{
+        jdk  'jdk17'
+        maven  'maven3'
+    }
+    
+    environment{
+        SCANNER_HOME= tool 'sonar-scanner'
+    }
+    
+    stages{
+        stage ('Checkout Code from GIT') {
+            steps{
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/Srikanthbatt/docker-compose.git']])
+            }
+        }
+        
+        stage('OWASP Scan') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./angularapp/app --disableYarnAudit --disableNodeAudit', odcInstallation: 'DC'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        
+        stage('Springboot-backend') {
+            steps {
+                dir('springboot-backend') {
+                    sh 'mvn clean install -DskipTests=true'
+                    sh 'java -jar springboot-backend/target/app.war &'
+                }
+            }
+        }
+
+        stage('Sonarqube') {
+            steps {
+                withSonarQubeEnv('sonar-server'){
+                   sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Java-App \
+                   -Dsonar.java.binaries=. \
+                   -Dsonar.projectKey=Java-App '''
+               }
+            }
+        }
+        
+        
+        stage('Build & Tag Docker image') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'django_id', toolName: 'docker') {
+                        
+                        sh "docker build -t java-app -f springboot-backend/Dockerfile ."
+                        sh "docker tag  java-app srikanthbattula/java-app:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Trivy image scan') {
+            steps {
+                sh "trivy image srikanthbattula/java-app:latest"
+                sh "trivy image --format json -o trivy-report.json --scanners vuln srikanthbattula/java-app:latest"
+            }
+        }
+        
+        stage('Push Docker image') {
+            steps {
+                script{
+                    withDockerRegistry(credentialsId: 'django_id', toolName: 'docker') {
+                        sh "docker push srikanthbattula/java-app:latest"
+                    }
+                }
+            }
+        }
+     
+        stage('Deploy to Tomcat') {
+            steps {
+                sshagent(['ec2-pem-key']) {
+                   sh "scp -o StrictHostKeyChecking=no springboot-backend/target/app.war ubuntu@50.19.87.84:/opt/tomcat/apache-tomcat-8.5.93/webapps"
+}
+            }
+        }
+        
+    }
+}
